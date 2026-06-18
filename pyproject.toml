@@ -30,6 +30,7 @@ dashboard = [
 fourj = "fourj.cli:main"
 frozen-magnon-jij = "fourj.cli:main"
 fourj-jij = "fourj.cli:main"
+fourj-dashboard = "fourj.dashboard:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

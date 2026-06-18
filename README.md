@@ -45,3 +45,17 @@ fourj \
   --plot-lswt \
   --lswt-dense-path
 ```
+
+
+## Dashboard
+
+Install the optional dashboard dependencies and launch the interactive Plotly/Dash app:
+
+```bash
+pip install -e /path/to/FourJ[dashboard]
+fourj-dashboard
+```
+
+Open `http://127.0.0.1:8050`, upload an Elk input or `elk.tmp`, upload
+`energy_vs_q.dat`, and optionally upload a `jfile` for explicit real-space
+vectors. Without a `jfile`, FourJ generates vectors from the selected cutoff.
