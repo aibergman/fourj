@@ -1,0 +1,4 @@
+include README.md
+include fourj.png
+recursive-include docs *.md *.py *.txt *.png
+recursive-include examples *.md *.sh
