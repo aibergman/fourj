@@ -75,6 +75,32 @@ class VectorSet:
             raise ValueError(f"No R vectors found in {path}")
         return cls(np.asarray(vectors, dtype=int))
 
+
+    @classmethod
+    def from_mesh_dimensions(cls, dims: tuple[int, int, int]) -> "VectorSet":
+        """Generate the centered integer R grid implied by a q mesh.
+
+        Args:
+            dims: Number of q points along each nested mesh direction.
+
+        Returns:
+            Direct-lattice integer translations compatible with the discrete
+            Fourier mesh, excluding R=(0, 0, 0).
+        """
+        import itertools
+
+        ranges = []
+        for n in dims:
+            if n < 2:
+                raise ValueError("q-mesh dimensions must be at least 2")
+            lower = -(n // 2)
+            upper = n // 2 + (n % 2)
+            ranges.append(range(lower, upper))
+        vectors = [r for r in itertools.product(*ranges) if any(r)]
+        if not vectors:
+            raise ValueError("Generated no R vectors from q-mesh dimensions")
+        return cls(np.asarray(vectors, dtype=int))
+
     @classmethod
     def from_radius(cls, structure: CrystalStructure, rmax: float | None) -> "VectorSet":
         """Generate integer lattice vectors inside a real-space cutoff."""

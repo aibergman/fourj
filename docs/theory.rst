@@ -27,6 +27,8 @@ where :math:`\mathbf{e}_i` is a unit vector along the local magnetic moment.  Fo
 a periodic crystal with one magnetic sublattice, the pair interaction can be
 written as :math:`J(\mathbf{R})`, where :math:`\mathbf{R}` is an integer direct
 lattice translation from one magnetic atom to another equivalent magnetic atom.
+FourJ writes `R1 R2 R3` as direct-lattice coordinates, so
+:math:`\mathbf{R}_{\mathrm{cart}} = R_1\mathbf{a}_1 + R_2\mathbf{a}_2 + R_3\mathbf{a}_3`.
 
 The lattice Fourier transform convention is
 
@@ -158,7 +160,9 @@ Adiabatic magnon scale
 ----------------------
 
 For comparison plots FourJ can rescale :math:`\Delta J(\mathbf{q})` to an
-adiabatic magnon-like energy.  In the one-sublattice classical convention used
+adiabatic magnon-like energy. Seekpath is called in original-cell mode, so the
+path q coordinates are expressed in the same reciprocal basis used for the
+Fourier transform and the extracted :math:`J(\mathbf{R})` values.  In the one-sublattice classical convention used
 here,
 
 .. math::

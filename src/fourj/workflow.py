@@ -9,7 +9,7 @@ import numpy as np
 
 from .io import EnergyTable, ResultWriter, VectorSet
 from .lsq import LSQExchangeFitter, LSQFitResult, LSQWriter, ShellBuilder
-from .mesh import QMeshSymmetrizer
+from .mesh import QMeshSymmetrizer, infer_nested_mesh
 from .structure import CrystalStructure, ElkInputParser
 from .transforms import ExchangeTransformResult, FrozenMagnonTransformer, symmetrize_real_space
 from .visualization import SeekPathPlotter
@@ -24,8 +24,9 @@ class WorkflowConfig:
         elk_path: Path to an Elk input or temporary file containing `scale`,
             `avec`, and `atoms` blocks.
         vectors_path: Optional `jfile`-like list of real-space vectors.
-        rmax: Radius in Angstrom used when generating vectors instead of
-            reading them from a file.
+        rmax: Radius in Angstrom used to generate all direct-lattice R
+            vectors up to a cutoff when no explicit vector file is given. If
+            omitted, vectors are inferred from the nested q mesh dimensions.
         theta: Spin-spiral cone angle in degrees.
         symmetry: q-space symmetry mode: `none`, `time-reversal`, `lattice`,
             or `spglib`.
@@ -70,6 +71,7 @@ class FrozenMagnonWorkflow:
         self.transform_result: ExchangeTransformResult | None = None
         self.symmetry_used: str | None = None
         self.lsq_result: LSQFitResult | None = None
+        self.vector_source: str | None = None
 
     def load(self) -> None:
         """Read the Elk structure and frozen-magnon energy table."""
@@ -99,7 +101,19 @@ class FrozenMagnonWorkflow:
         vectors_path = self.config.vectors_path
         if vectors_path is None and Path("jfile").exists():
             vectors_path = Path("jfile")
-        vectors = VectorSet.from_jfile(vectors_path).vectors if vectors_path is not None else VectorSet.from_radius(self.structure, self.config.rmax).vectors
+        if vectors_path is not None:
+            vectors = VectorSet.from_jfile(vectors_path).vectors
+            self.vector_source = f"jfile: {vectors_path}"
+        elif self.config.rmax is not None:
+            vectors = VectorSet.from_radius(self.structure, self.config.rmax).vectors
+            self.vector_source = f"direct-lattice translations with |R| <= {self.config.rmax:g} A"
+        else:
+            dims, _steps = infer_nested_mesh(self.energy_table.q, self.config.tol)
+            full_vectors = VectorSet.from_mesh_dimensions(dims).vectors
+            distances = np.linalg.norm(full_vectors @ self.structure.lattice_angstrom, axis=1)
+            default_rmax = 0.5 * float(np.max(distances))
+            vectors = full_vectors[distances <= default_rmax + self.config.tol]
+            self.vector_source = f"centered direct-lattice grid inferred from q mesh {dims}, |R| <= {default_rmax:.6g} A (half mesh max)"
 
         result = FrozenMagnonTransformer(self.config.theta, self.config.e0).inverse_transform(q, energy, weights, vectors)
         if self.config.realspace_pair_symmetry:

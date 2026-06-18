@@ -58,4 +58,13 @@ fourj-dashboard
 
 Open `http://127.0.0.1:8050`, upload an Elk input or `elk.tmp`, upload
 `energy_vs_q.dat`, and optionally upload a `jfile` for explicit real-space
-vectors. Without a `jfile`, FourJ generates vectors from the selected cutoff.
+vectors. Without a `jfile`, FourJ infers a centered direct-lattice `R` grid
+from the q-mesh and keeps vectors up to half of the inferred maximum distance.
+If an `rmax` cutoff is supplied, it instead generates all integer direct-lattice
+translations with `|R| <= rmax`.
+
+The dashboard can also be launched from the CLI settings of a calculation:
+
+```bash
+fourj --energy energy_vs_q.dat --elk elk.tmp --symmetry spglib --gui
+```
