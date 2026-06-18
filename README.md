@@ -1,3 +1,11 @@
+---
+title: FourJ
+sdk: docker
+app_port: 7860
+pinned: false
+license: mit
+---
+
 # FourJ
 
 ![FourJ logo](fourj.png)
@@ -15,8 +23,11 @@ Seekpath high-symmetry paths.
 From a calculation directory containing `energy_vs_q.dat`, `elk.tmp`, and
 `jfile`:
 
-After `pip install -e /path/to/FourJ`, use the console command below.
-For local, non-installed use, replace `fourj` with `python /path/to/FourJ/fourj.py`.
+Install FourJ first, then use the console command below.
+
+```bash
+pip install -e /path/to/FourJ[dashboard]
+```
 
 ```bash
 fourj \
@@ -63,8 +74,31 @@ from the q-mesh and keeps vectors up to half of the inferred maximum distance.
 If an `rmax` cutoff is supplied, it instead generates all integer direct-lattice
 translations with `|R| <= rmax`.
 
+The dashboard can export an UppASD-style exchange file with columns
+`iatom jatom r_x r_y r_z Jij |rij|`, where `Jij` is in mRy and `|rij|` is in
+Angstrom.
+
 The dashboard can also be launched from the CLI settings of a calculation:
 
 ```bash
 fourj --energy energy_vs_q.dat --elk elk.tmp --symmetry spglib --gui
+```
+
+
+## Hosting
+
+The dashboard is a normal Dash web app. For a free public demo, Hugging Face
+Spaces with the Docker SDK is a good fit: push this repository to a Space and
+it will run `app.py` through the included `Dockerfile` on the free CPU tier.
+
+For generic Python hosts, use:
+
+```bash
+gunicorn app:server
+```
+
+or run the dashboard module directly with the host-provided port:
+
+```bash
+PORT=8050 HOST=0.0.0.0 fourj-dashboard
 ```

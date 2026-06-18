@@ -14,3 +14,10 @@ The examples assume you run from one of the calculation directories such as
 ```bash
 ../../examples/run_lsq_two_shells.sh
 ```
+
+
+## BZ visualization prototypes
+
+`bz_viz.py` and `bz_viz_std.py` are standalone exploratory scripts that document
+the Voronoi/Seekpath ideas used by the dashboard BZ widget. They are not part of
+the installed FourJ command-line interface.

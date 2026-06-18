@@ -135,7 +135,7 @@ class SeekPathPlotter:
             dft_column = "dft_value_mRy"
         elif plot_kind == "magnon":
             plot_values = transformer.dft_spectrum_mry(q_raw, energy_raw_hartree)
-            ylabel = r"$(E(q)-E_0)/\sin^2\theta$ (mRy)"
+            ylabel = r"$(E(q)-E_0)//\sin^2\theta$ (mRy)"
             dft_column = "dft_magnon_mRy"
         else:
             raise ValueError(f"Unknown plot kind: {plot_kind}")

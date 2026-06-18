@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+import os
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
@@ -204,7 +205,7 @@ def _plot_reciprocal_cell(workflow: FrozenMagnonWorkflow) -> Any:
 
     cell_vertices = bz_vertices[cell_vertex_indices]
     seekpath_traces, labels = _seekpath_cartesian_traces(workflow, reciprocal)
-    label_text = [label.replace("GAMMA", r"\Gamma") for label, _coords in labels]
+    label_text = [label.replace("GAMMA", "Γ") for label, _coords in labels]
     label_coords = np.asarray([coords for _label, coords in labels], dtype=float) if labels else np.empty((0, 3))
 
     fig = go.Figure()
@@ -238,9 +239,9 @@ def _plot_reciprocal_cell(workflow: FrozenMagnonWorkflow) -> Any:
             y=q_cart[:, 1],
             z=q_cart[:, 2],
             mode="markers",
-            marker={"size": 4, "color": energy_mry, "colorscale": "Viridis", "opacity": 0.82, "colorbar": {"title": "E-E0 (mRy)", "len": 0.62}},
+            marker={"size": 4, "color": energy_mry, "colorscale": "viridis", "opacity": 0.75, "colorbar": {"title": "E-E₀ (mRy)", "len": 0.62}},
             customdata=np.column_stack([workflow.energy_table.q, energy_mry]),
-            hovertemplate="q=(%{customdata[0]:.5f}, %{customdata[1]:.5f}, %{customdata[2]:.5f})<br>k=(%{x:.4f}, %{y:.4f}, %{z:.4f}) 1/A<br>E-E0=%{customdata[3]:.6f} mRy<extra>input q</extra>",
+            hovertemplate="q=(%{customdata[0]:.5f}, %{customdata[1]:.5f}, %{customdata[2]:.5f})<br>k=(%{x:.4f}, %{y:.4f}, %{z:.4f}) 1/A<br>E-E₀=%{customdata[3]:.6f} mRy<extra>input q</extra>",
             name="input q-points colored by energy",
         )
     )
@@ -251,9 +252,9 @@ def _plot_reciprocal_cell(workflow: FrozenMagnonWorkflow) -> Any:
             z=[0.0],
             mode="markers+text",
             marker={"size": 5, "color": "#dc2626"},
-            text=["Gamma"],
+            text=["Γ"],
             textposition="top center",
-            name="Gamma",
+            name="Γ",
         )
     )
     for trace in seekpath_traces:
@@ -318,7 +319,7 @@ def _plot_input_energy(workflow: FrozenMagnonWorkflow) -> Any:
         autosize=True,
         margin={"l": 44, "r": 8, "t": 24, "b": 28},
         xaxis_title="Input q-index",
-        yaxis_title=r"$E(\mathbf{q})-E0$ (mRy)",
+        yaxis_title="E(q)-E₀ (mRy)",
     )
     return fig
 
@@ -334,7 +335,7 @@ def _path_axis(points: dict[str, np.ndarray], segments: list[tuple[str, str]], r
         length = float(np.linalg.norm((end - start) @ reciprocal))
         starts[(start_label, end_label)] = offset
         ticks.extend([offset, offset + length])
-        labels.extend([start_label.replace("GAMMA", "Gamma"), end_label.replace("GAMMA", "Gamma")])
+        labels.extend([start_label.replace("GAMMA", "Γ"), end_label.replace("GAMMA", "Γ")])
         offset += length
     return starts, ticks, labels
 
@@ -349,10 +350,10 @@ def _plot_seekpath(workflow: FrozenMagnonWorkflow, show_ft: bool, show_lsq: bool
 
     transformer = FrozenMagnonTransformer(workflow.config.theta, workflow.config.e0)
     dft_y = transformer.dft_spectrum_mry(workflow.energy_table.q, workflow.energy_table.energy_hartree)
-    ylabel = r"$[E(\mathbf{q})-E0]/\sin^2(\theta)$ (mRy)"
+    ylabel = "[E(q)-E₀] / sin²(θ) (mRy)"
     if moment is not None:
         dft_y = (4.0 / moment) * dft_y * MRY_TO_MEV
-        ylabel = f"$4[J(0)-J(\mathbf{{q}})]/{moment:g}$ (meV)"
+        ylabel = f"4[J(0)-J(q)]/{moment:g} (meV)"
 
     points, segments, bravais = SeekPath(workflow.structure, workflow.config.symprec).get()
     reciprocal = reciprocal_lattice_rows(workflow.structure.lattice_angstrom)
@@ -390,6 +391,7 @@ def _plot_seekpath(workflow: FrozenMagnonWorkflow, show_ft: bool, show_lsq: bool
         if show_ft:
             ft_y = ExchangeSpectrum.from_jij(q_line, workflow.transform_result.vectors, workflow.transform_result.jij_mry)
             ft_y, ft_label, _ = ExchangeSpectrum.scale(ft_y, moment)
+            ft_label = f"4[J(0)-J(q)]/{moment:g} from extracted J(R) (meV)" if moment is not None else "J(0)-J(q) from extracted J(R) (mRy)"
             fig.add_trace(
                 go.Scatter(
                     x=x_line,
@@ -442,7 +444,7 @@ def _plot_jij(workflow: FrozenMagnonWorkflow, show_lsq: bool, scale_r2: bool = F
     distances = np.linalg.norm(result.vectors @ workflow.structure.lattice_angstrom, axis=1)
     scale = distances**2 if scale_r2 else np.ones_like(distances)
     y_values = result.jij_mry.real * scale
-    y_label = r"$J(R) \cdot R^2$ (mRy A$^2$)" if scale_r2 else r"$J(R)$ (mRy)"
+    y_label = "J(R) * R^2 (mRy A^2)" if scale_r2 else "J(R) (mRy)"
     custom = np.column_stack([result.vectors, result.jij_mry.real, distances])
     fig = go.Figure()
     fig.add_trace(
@@ -549,6 +551,93 @@ def _run_uploaded_analysis(
     return workflow
 
 
+def _workflow_from_dashboard_inputs(
+    elk_contents: str | None,
+    elk_filename: str | None,
+    energy_contents: str | None,
+    energy_filename: str | None,
+    jfile_contents: str | None,
+    jfile_filename: str | None,
+    theta: float,
+    symmetry: str,
+    e0: str,
+    rmax: float | None,
+    fit_lsq: list[str] | None,
+    fit_shells: int | None,
+    moment: float | None,
+    dense_points: int | None,
+    initial_data: dict[str, str | None] | None,
+) -> FrozenMagnonWorkflow:
+    """Run the dashboard analysis from uploaded files or preloaded paths."""
+    if elk_contents or energy_contents:
+        return _run_uploaded_analysis(
+            elk_contents,
+            elk_filename,
+            energy_contents,
+            energy_filename,
+            jfile_contents,
+            jfile_filename,
+            theta,
+            symmetry,
+            e0,
+            rmax,
+            fit_lsq,
+            fit_shells,
+        )
+    if initial_data and initial_data.get("elk_path") and initial_data.get("energy_path"):
+        return _run_path_analysis(
+            PathAnalysisConfig(
+                elk_path=Path(str(initial_data["elk_path"])),
+                energy_path=Path(str(initial_data["energy_path"])),
+                vectors_path=Path(str(initial_data["vectors_path"])) if initial_data.get("vectors_path") else None,
+                theta=float(theta),
+                symmetry=symmetry,
+                e0=e0,
+                rmax=rmax,
+                fit_lsq=bool(fit_lsq and "fit" in fit_lsq),
+                fit_shells=fit_shells,
+                moment=float(moment) if moment else None,
+                dense_points=int(dense_points or 400),
+            )
+        )
+    return _run_uploaded_analysis(
+        elk_contents,
+        elk_filename,
+        energy_contents,
+        energy_filename,
+        jfile_contents,
+        jfile_filename,
+        theta,
+        symmetry,
+        e0,
+        rmax,
+        fit_lsq,
+        fit_shells,
+    )
+
+
+def _uppasd_jfile_text(workflow: FrozenMagnonWorkflow) -> str:
+    """Return UppASD-style jfile text for the extracted single-sublattice J(R)."""
+    if workflow.transform_result is None or workflow.structure is None:
+        raise ValueError("Run the transform before exporting an UppASD jfile")
+    result = workflow.transform_result
+    distances = np.linalg.norm(result.vectors @ workflow.structure.lattice_angstrom, axis=1)
+    order = np.lexsort((result.vectors[:, 2], result.vectors[:, 1], result.vectors[:, 0], distances))
+    lines = [
+        "# UppASD-style exchange file generated by FourJ",
+        "# columns: iatom jatom r_x r_y r_z Jij |rij|",
+        "# r_x r_y r_z are integer direct-lattice translations",
+        "# Jij is in mRy; |rij| is in Angstrom",
+    ]
+    for idx in order:
+        vector = result.vectors[idx]
+        lines.append(
+            f"{1:5d} {1:5d} {int(vector[0]):6d} {int(vector[1]):6d} {int(vector[2]):6d} "
+            f"{float(result.jij_mry[idx].real):18.10f} {float(distances[idx]):16.8f}"
+        )
+    return "\n".join(lines) + "\n"
+
+
 def _status_panel(workflow: FrozenMagnonWorkflow) -> list[Any]:
     from dash import html
 
@@ -577,7 +666,7 @@ def _status_panel(workflow: FrozenMagnonWorkflow) -> list[Any]:
 def create_app(initial_config: PathAnalysisConfig | None = None) -> Any:
     """Create the FourJ Dash application."""
     try:
-        from dash import Dash, Input, Output, State, dcc, html, no_update
+        from dash import Dash, Input, Output, State, ctx, dcc, html, no_update
     except Exception as exc:  # pragma: no cover - depends on optional extras
         raise RuntimeError("Install dashboard dependencies with `pip install -e .[dashboard]`") from exc
 
@@ -660,7 +749,7 @@ def create_app(initial_config: PathAnalysisConfig | None = None) -> Any:
                             dcc.Input(id="rmax", type="number", value=initial_config.rmax if initial_config else None, placeholder="auto: half inferred mesh max", step=0.5, className="control"),
                             dcc.Checklist(id="fit-lsq", options=[{"label": "Fit LSQ shells", "value": "fit"}], value=["fit"] if initial_config and initial_config.fit_lsq else [], className="checklist"),
                             html.Label("Number of LSQ shells"),
-                            dcc.Input(id="fit-shells", type="number", value=initial_config.fit_shells if initial_config and initial_config.fit_shells else 2, min=1, step=1, className="control"),
+                            dcc.Input(id="fit-shells", type="number", value=initial_config.fit_shells if initial_config and initial_config.fit_shells else 6, min=1, step=1, className="control"),
                             dcc.Checklist(
                                 id="overlays",
                                 options=[{"label": "Show FT spectrum", "value": "ft"}, {"label": "Show LSQ spectrum", "value": "lsq"}],
@@ -678,6 +767,8 @@ def create_app(initial_config: PathAnalysisConfig | None = None) -> Any:
                             html.Label("Dense path points/segment"),
                             dcc.Input(id="dense-points", type="number", value=initial_config.dense_points if initial_config else 400, min=2, step=1, className="control"),
                             html.Button("Run Analysis", id="run-button", n_clicks=0, className="run-button"),
+                            html.Button("Download UppASD jfile", id="download-uppasd-button", n_clicks=0, className="secondary-button"),
+                            dcc.Download(id="download-uppasd"),
                             html.Div(initial_status, id="status", className="status"),
                         ],
                         className="sidebar",
@@ -718,6 +809,8 @@ def create_app(initial_config: PathAnalysisConfig | None = None) -> Any:
                 .file-name { min-height: 15px; margin: 3px 0 7px; color: #475569; font-size: 11px; }
                 .run-button { width: 100%; height: 36px; margin-top: 10px; border: 0; border-radius: 6px; background: #2563eb; color: white; font-size: 14px; font-weight: 700; cursor: pointer; }
                 .run-button:hover { background: #1d4ed8; }
+                .secondary-button { width: 100%; height: 34px; margin-top: 8px; border: 1px solid #cbd5e1; border-radius: 6px; background: #f8fafc; color: #0f172a; font-size: 13px; font-weight: 700; cursor: pointer; }
+                .secondary-button:hover { background: #e2e8f0; }
                 .status { margin-top: 10px; font-size: 12px; color: #334155; }
                 .metric-row { display: flex; justify-content: space-between; gap: 10px; padding: 4px 0; border-bottom: 1px solid #e2e8f0; }
                 .metric-row strong { color: #0f172a; text-align: right; }
@@ -752,9 +845,9 @@ def create_app(initial_config: PathAnalysisConfig | None = None) -> Any:
         Output("jij-figure", "figure"),
         Output("status", "children"),
         Input("run-button", "n_clicks"),
-        State("elk-upload", "contents"),
+        Input("elk-upload", "contents"),
+        Input("energy-upload", "contents"),
         State("elk-upload", "filename"),
-        State("energy-upload", "contents"),
         State("energy-upload", "filename"),
         State("jfile-upload", "contents"),
         State("jfile-upload", "filename"),
@@ -774,8 +867,8 @@ def create_app(initial_config: PathAnalysisConfig | None = None) -> Any:
     def _run(
         n_clicks: int,
         elk_contents: str | None,
-        elk_filename: str | None,
         energy_contents: str | None,
+        elk_filename: str | None,
         energy_filename: str | None,
         jfile_contents: str | None,
         jfile_filename: str | None,
@@ -791,55 +884,29 @@ def create_app(initial_config: PathAnalysisConfig | None = None) -> Any:
         dense_points: int | None,
         initial_data: dict[str, str | None] | None,
     ) -> tuple[Any, Any, Any, Any, Any]:
-        if not n_clicks:
+        triggered = ctx.triggered_id
+        if triggered != "run-button" and not (elk_contents and energy_contents):
+            return no_update, no_update, no_update, no_update, no_update
+        if triggered == "run-button" and not n_clicks:
             return no_update, no_update, no_update, no_update, no_update
         try:
-            if elk_contents or energy_contents:
-                workflow = _run_uploaded_analysis(
-                    elk_contents,
-                    elk_filename,
-                    energy_contents,
-                    energy_filename,
-                    jfile_contents,
-                    jfile_filename,
-                    theta,
-                    symmetry,
-                    e0,
-                    rmax,
-                    fit_lsq,
-                    fit_shells,
-                )
-            elif initial_data and initial_data.get("elk_path") and initial_data.get("energy_path"):
-                workflow = _run_path_analysis(
-                    PathAnalysisConfig(
-                        elk_path=Path(str(initial_data["elk_path"])),
-                        energy_path=Path(str(initial_data["energy_path"])),
-                        vectors_path=Path(str(initial_data["vectors_path"])) if initial_data.get("vectors_path") else None,
-                        theta=float(theta),
-                        symmetry=symmetry,
-                        e0=e0,
-                        rmax=rmax,
-                        fit_lsq=bool(fit_lsq and "fit" in fit_lsq),
-                        fit_shells=fit_shells,
-                        moment=float(moment) if moment else None,
-                        dense_points=int(dense_points or 400),
-                    )
-                )
-            else:
-                workflow = _run_uploaded_analysis(
-                    elk_contents,
-                    elk_filename,
-                    energy_contents,
-                    energy_filename,
-                    jfile_contents,
-                    jfile_filename,
-                    theta,
-                    symmetry,
-                    e0,
-                    rmax,
-                    fit_lsq,
-                    fit_shells,
-                )
+            workflow = _workflow_from_dashboard_inputs(
+                elk_contents,
+                elk_filename,
+                energy_contents,
+                energy_filename,
+                jfile_contents,
+                jfile_filename,
+                theta,
+                symmetry,
+                e0,
+                rmax,
+                fit_lsq,
+                fit_shells,
+                moment,
+                dense_points,
+                initial_data,
+            )
             overlays = overlays or []
             return (
                 _plot_reciprocal_cell(workflow),
@@ -854,14 +921,73 @@ def create_app(initial_config: PathAnalysisConfig | None = None) -> Any:
             error = html.Div(str(exc), className="error")
             return _empty_figure("Analysis failed"), _empty_figure("Analysis failed"), _empty_figure("Analysis failed"), _empty_figure("Analysis failed"), error
 
+    @app.callback(
+        Output("download-uppasd", "data"),
+        Input("download-uppasd-button", "n_clicks"),
+        State("elk-upload", "contents"),
+        State("elk-upload", "filename"),
+        State("energy-upload", "contents"),
+        State("energy-upload", "filename"),
+        State("jfile-upload", "contents"),
+        State("jfile-upload", "filename"),
+        State("theta", "value"),
+        State("symmetry", "value"),
+        State("e0", "value"),
+        State("rmax", "value"),
+        State("fit-lsq", "value"),
+        State("fit-shells", "value"),
+        State("moment", "value"),
+        State("dense-points", "value"),
+        State("initial-config", "data"),
+        prevent_initial_call=True,
+    )
+    def _download_uppasd(
+        n_clicks: int,
+        elk_contents: str | None,
+        energy_contents: str | None,
+        elk_filename: str | None,
+        energy_filename: str | None,
+        jfile_contents: str | None,
+        jfile_filename: str | None,
+        theta: float,
+        symmetry: str,
+        e0: str,
+        rmax: float | None,
+        fit_lsq: list[str] | None,
+        fit_shells: int | None,
+        moment: float | None,
+        dense_points: int | None,
+        initial_data: dict[str, str | None] | None,
+    ) -> Any:
+        if not n_clicks:
+            return no_update
+        workflow = _workflow_from_dashboard_inputs(
+            elk_contents,
+            elk_filename,
+            energy_contents,
+            energy_filename,
+            jfile_contents,
+            jfile_filename,
+            theta,
+            symmetry,
+            e0,
+            rmax,
+            fit_lsq,
+            fit_shells,
+            moment,
+            dense_points,
+            initial_data,
+        )
+        return dcc.send_string(_uppasd_jfile_text(workflow), "fourj_uppasd_jfile.dat")
+
     return app
 
 
 def main(argv: list[str] | None = None) -> int:
     """Run the FourJ dashboard server."""
     parser = argparse.ArgumentParser(description="Run the FourJ Plotly dashboard.")
-    parser.add_argument("--host", default="127.0.0.1")
-    parser.add_argument("--port", default=8050, type=int)
+    parser.add_argument("--host", default=os.environ.get("HOST", "127.0.0.1"))
+    parser.add_argument("--port", default=int(os.environ.get("PORT", "8050")), type=int)
     parser.add_argument("--debug", action="store_true")
     parser.add_argument("--energy", type=Path, default=None, help="Optional initial energy_vs_q.dat path")
     parser.add_argument("--elk", type=Path, default=None, help="Optional initial Elk input/tmp path")
