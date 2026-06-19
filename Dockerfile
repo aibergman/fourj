@@ -8,7 +8,6 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 COPY pyproject.toml README.md MANIFEST.in ./
 COPY src ./src
-COPY fourj.png ./fourj.png
 COPY app.py ./app.py
 
 RUN pip install --no-cache-dir --upgrade pip \

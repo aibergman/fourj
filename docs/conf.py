@@ -29,5 +29,4 @@ templates_path = ["_templates"]
 exclude_patterns: list[str] = []
 html_theme = "sphinx_rtd_theme"
 
-html_logo = "_static/fourj.png"
 html_static_path = ["_static"]

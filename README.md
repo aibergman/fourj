@@ -8,8 +8,6 @@ license: mit
 
 # FourJ
 
-![FourJ logo](fourj.png)
-
 `fourj` extracts one-sublattice Heisenberg exchange parameters from Elk
 spin-spiral frozen-magnon calculations.
 
