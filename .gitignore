@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Docs
+docs/_build/
+
+# OS/editor
+.DS_Store
+.vscode/
+.idea/
+
+# Local outputs
+*.jij.dat
+*.Jij_vs_distance.dat
+*.Jq_delta.dat
+*.seekpath_*.dat
+*.seekpath_*.png
+*.lsq_shells.dat
+*.lsq_fit_q.dat

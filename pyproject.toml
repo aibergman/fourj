@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "FourJ"
+version = "0.1.0"
+description = "FourJ: exchange extraction, LSQ fitting, and visualization for Elk spin-spiral calculations."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy",
+    "scipy",
+    "matplotlib",
+    "seekpath",
+    "spglib",
+]
+
+[project.optional-dependencies]
+docs = [
+    "sphinx",
+    "myst-parser",
+    "sphinx-rtd-theme",
+]
+dashboard = [
+    "plotly",
+    "dash",
+]
+
+[project.scripts]
+fourj = "fourj.cli:main"
+frozen-magnon-jij = "fourj.cli:main"
+fourj-jij = "fourj.cli:main"
+fourj-dashboard = "fourj.dashboard:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

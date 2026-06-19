@@ -1,0 +1,10 @@
+.git
+__pycache__/
+*.py[cod]
+.DS_Store
+docs/_build/
+dist/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
